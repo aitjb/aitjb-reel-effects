@@ -34,7 +34,7 @@ Windows(PowerShell)把 `~/.claude/skills/effects` 換成 `$HOME\.claude\skills\e
 /effects 先剪掉停頓，再加 bold 字幕
 /effects 分身列隊 從 3 到 6 秒
 /effects 報紙頭版 頭條寫「AI 取代剪輯師？」 開場 2 秒
-/effects 講到「數據」的時候 用彈跳長條圖，數字 12、30、58
+/effects 講到「成長」的時候 用彈跳長條圖，數字 12、30、58
 ```
 
 中文名、英文名(`clone-row`)、底線寫法(`paper_cut`)都可以。

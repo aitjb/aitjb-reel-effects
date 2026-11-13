@@ -1650,14 +1650,19 @@ def match_page(c, e, j, wx, wy):
     W, H = c.W, c.H; rnd = random.Random(31 + j)
     paper = [(246, 243, 236), (236, 229, 212), (251, 251, 250), (241, 236, 228), (232, 232, 230), (248, 240, 228)][j % 6]
     kind = ['serif', 'mont', 'ui', 'serif', 'anton', 'monts'][j % 6]
-    size = W * [0.085, 0.07, 0.072, 0.095, 0.08, 0.068][j % 6]; f = font(kind, size); lh = size * 1.22
+    size = W * [0.085, 0.07, 0.072, 0.095, 0.08, 0.068][j % 6]; lh = size * 1.22
     word = e.o.get('text', 'Claude'); red = rgb(e.o.get('color'), (214, 40, 40))
     im = Image.new('RGB', (W, H), paper); d = ImageDraw.Draw(im); ink = (40, 38, 36)
-    base = f.getbbox('Ag'); asc = -base[1]
+    zh = e.o.get('lang', 'zh') != 'en'
+    if zh:  # 繁中報紙：把內文切成 2 到 4 個字一組，字之間不留空格
+        txt = re.sub(r'[，。、；：！？「」]', '', ZH_FILLER); toks = []; i = 0; rr = random.Random(5)
+        while i < len(txt): n = rr.choice((2, 3, 4)); toks.append(txt[i:i + n]); i += n
+        kind = ['serif', 'mont', 'ui', 'serif', 'bold', 'monts'][j % 6]
+    f = font(kind, size); base = f.getbbox('Ag'); asc = -base[1]
     ww = f.getlength(word); bx0 = wx - ww / 2
     def run(x, y, direction):
         while (x < W + size if direction > 0 else x > -size * 6):
-            w_ = rnd.choice(MATCH_TXT) + ' '
+            w_ = rnd.choice(toks) if zh else rnd.choice(MATCH_TXT) + ' '
             if direction < 0: x -= f.getlength(w_)
             d.text((x, y), w_, font=f, fill=ink)
             if direction > 0: x += f.getlength(w_)
@@ -2078,7 +2083,8 @@ def fx_messages(c, e):
     msgs = (e.o.get('text') or 'how did you edit this??|wait, which app is this|send me the effects pls|EFFECTS').split('|')
     title = e.o.get('title', 'Messages'); n = len(msgs); u = c.W / 2160
     gap = min(0.4, e.d * 0.75 / max(1, n)); pops = [0.13 + i * gap for i in range(n)]
-    bottom = c.H * float(e.o.get('y', 0.61)); out = fade(c, e, 0.2)
+    u2 = c.W / 2160; stack = 165 * u2 + (n - 1) * 365 * u2 + 200 * u2
+    bottom = c.H * float(e.o['y']) if e.o.get('y') is not None else min(c.H * 0.97, max(c.H * 0.61, c.fy + c.fw * 1.3 + stack)); out = fade(c, e, 0.2)
     for k in range(n):
         if c.lt < pops[k]: continue
         newer = sum(ease_out(clamp((c.lt - pops[j]) / 0.17)) for j in range(k + 1, n) if c.lt >= pops[j])
@@ -2496,7 +2502,7 @@ def cap_word_imgs(block, u, style):
     if style == 'clean': fs = lambda k: font('didoneib', 84 * u * fit) if k else font('montb', 62 * u * fit); space, maxw = 22 * u, 960 * u
     else: fs = lambda k: font('popx', (96 if k else 84) * u * fit); space, maxw = 26 * u, 960 * u
     fit = 1.0
-    txt = [(w['w'].lower() if style == 'clean' and not has_cjk(joinw(x['w'] for x in block)) else w['w']).rstrip('.,;:，。、；：！？') or w['w'] for w in block]
+    txt = [w['w'].rstrip('.,;:，。、；：！？') or w['w'] for w in block]  # aitjb: keep brand names as written (Claude Code, not claude code)
     sp = [space if i + 1 < len(txt) and gap_after(txt[i], txt[i + 1]) else (space * 0.15 if i + 1 < len(txt) else 0) for i in range(len(txt))]
     width = lambda: sum(fs(w['k']).getlength(t) for w, t in zip(block, txt)) + sum(sp[:-1])
     total = width()
@@ -2599,13 +2605,22 @@ def clean_plate(c, e):
     if pl and os.path.exists(str(pl)):
         return cached(e, 'plate', lambda: np.asarray(Image.open(str(pl)).convert('RGB').resize((c.W, c.H), Image.LANCZOS), np.float32) / 255)
     def mk():
+        # fill each row of the hole from the wall on its left and right (smooth, so no outline of you is left behind),
+        # then blend it in with a wide soft edge
         s = 4; w, h = c.W // s, c.H // s
-        small = cv2.resize((c.img * 255).astype(np.uint8), (w, h), interpolation=cv2.INTER_AREA)
-        mk_ = cv2.dilate((cv2.resize(c.m, (w, h)) > 0.25).astype(np.uint8) * 255, np.ones((9, 9), np.uint8))
-        fill = cv2.inpaint(cv2.cvtColor(small, cv2.COLOR_RGB2BGR), mk_, 9, cv2.INPAINT_TELEA)
-        fill = cv2.cvtColor(cv2.GaussianBlur(fill, (0, 0), 3), cv2.COLOR_BGR2RGB)
-        big = cv2.resize(fill, (c.W, c.H), interpolation=cv2.INTER_CUBIC).astype(np.float32) / 255
-        soft = cv2.GaussianBlur(cv2.resize(mk_, (c.W, c.H)).astype(np.float32) / 255, (0, 0), 6)[..., None]
+        small = cv2.resize(c.img, (w, h), interpolation=cv2.INTER_AREA)
+        hole = cv2.dilate((cv2.resize(c.m, (w, h)) > 0.05).astype(np.uint8), np.ones((13, 13), np.uint8)).astype(bool)
+        fill = small.copy(); xs = np.arange(w, dtype=np.float32)
+        for y in range(h):
+            row = hole[y]
+            if not row.any(): continue
+            good = ~row
+            if good.sum() < 2: fill[y] = fill[y - 1] if y else small[y]; continue
+            for ch in range(3): fill[y, row, ch] = np.interp(xs[row], xs[good], small[y, good, ch])
+        fill = cv2.GaussianBlur(fill, (0, 0), 2.5)
+        fill = small * (~hole[..., None]) + cv2.GaussianBlur(fill, (0, 0), 1.5) * hole[..., None]
+        big = cv2.resize(fill.astype(np.float32), (c.W, c.H), interpolation=cv2.INTER_CUBIC)
+        soft = cv2.GaussianBlur(cv2.resize(hole.astype(np.float32), (c.W, c.H)), (0, 0), 14)[..., None]
         return c.img * (1 - soft) + big * soft
     return cached(e, 'plate', mk)
 
@@ -2674,6 +2689,19 @@ def news_page(W, H, head, sub, photo_box, date):
             d.text((cx0, yy), txt[k:k + n], font=f, fill=ink + (235,)); k += n; yy += lh
         if ci < 2: d.line([(cx0 + col_w + 14 * u, y1 + 50 * u), (cx0 + col_w + 14 * u, H - mx)], fill=ink + (160,), width=1)
     return pg
+
+
+def news_box(c, u):
+    """The photo box on the front page, kept inside the frame for vertical and landscape video."""
+    h = min((c.W - 92 * u) * 0.78, c.H * 0.5); w = min(c.W - 92 * u, h / 0.78)
+    x0 = int((c.W - w) / 2); y0 = int(c.H * 0.36)
+    return (x0, y0, int(x0 + w), int(min(c.H - 4, y0 + h)))
+
+
+def roc_today():
+    import datetime as _dt
+    t = _dt.date.today(); wd = '一二三四五六日'[t.weekday()]
+    return f'中華民國 {t.year - 1911} 年 {t.month} 月 {t.day} 日 星期{wd}'
 
 
 def news_photo(c, x0, y0, x1, y1, cell=None):
@@ -2857,7 +2885,9 @@ def fx_chart_grow(c, e):
         big = text_img(val, 150 * u, 'uib', (255, 255, 255), glow=(col, 20 * u), shadow=6)
         place(c, big, clamp(x1 - big.width * 0.45, big.width / 2, c.W - big.width / 2), yt + big.height * 0.35, 0.6 + 0.4 * b, 0, al)
     lab = e.o.get('text')
-    if lab: place(c, cached(e, 'lab', lambda: text_img(lab, 44 * u, 'uim', (255, 255, 255), shadow=4)), x0 + 200 * u, yb + 40 * u, alpha=al, behind=True)
+    if lab:
+        li = cached(e, 'lab', lambda: fit_text(lab, c.W * 0.8, 'uim', int(44 * u), fill=(255, 255, 255), shadow=4))
+        place(c, li, x0 + li.width / 2, yb + 40 * u, alpha=al, behind=True)
 
 
 # 6
@@ -2967,7 +2997,7 @@ def fx_doodle_boil(c, e):
     comp(c, L, 0, 0, al, behind=True)
     t = e.o.get('text')
     if t and c.lt > 0.5:
-        lab = cached(e, ('t', int(st * 10) % 2), lambda: text_img(t, 90 * u, 'tchand' if has_cjk(t) else 'hand', col2, shadow=5))
+        lab = cached(e, ('t', int(st * 10) % 2), lambda: fit_text(t, c.W * 0.86, 'tchand' if has_cjk(t) else 'hand', int(90 * u), fill=col2, shadow=5))
         place(c, lab, c.W / 2 + rnd.uniform(-3, 3) * u, max(c.H * 0.08, c.fy - c.fw * 2.4), 1, rnd.uniform(-3, 3), al, guard=True)
 
 
@@ -3080,7 +3110,7 @@ def fx_code_body(c, e):
 # 12
 @effect('letter-dive', '文字俯衝：奶油色紙上一個字一個字打出來，鏡頭再飛進字裡面變回影片')
 def fx_letter_dive(c, e):
-    u = c.W / 1080; txt = e.o.get('text', '剪輯。')
+    u = c.W / 1080; txt = e.o.get('text', '剪輯')
     kind = 'tcserif' if has_cjk(txt) else 'didoneb'
     def mk():
         im = fit_text(txt, c.W * 0.86, kind, int(c.W * 0.42), fill=(255, 255, 255))
@@ -3138,8 +3168,8 @@ def fx_blade_slice(c, e):
 def fx_press_front(c, e):
     u = c.W / 1080; al = fade(c, e); k = ease_out(c.lt / 0.35)
     head = e.o.get('text', 'AI 取代剪輯師？'); sub = e.o.get('sub', '創作者：一句話就能剪好一支影片')
-    date = e.o.get('date', '中華民國 115 年 11 月 13 日 星期五')
-    bx = (int(46 * u), int(c.H * 0.36), int(c.W - 46 * u), int(c.H * 0.36 + (c.W - 92 * u) * 0.78))
+    date = e.o.get('date') or roc_today()
+    bx = news_box(c, u)
     def mk():
         pg = news_page(c.W, c.H, head, sub, bx, date); return to_np(pg)[..., :3]
     pg = cached(e, 'pg', mk)
@@ -3173,7 +3203,7 @@ def fx_head_stack(c, e):
         rot = r
         if collapse:
             yy += (ck ** 2) * c.H * (0.9 + 0.15 * j); rot = r + ck * (60 if j % 2 else -60); x = x + ck * (j % 3 - 1) * c.W * 0.2
-        place(c, im, x, yy, 1, rot); place(c, lb, x, yy - 2 * u, 1, rot)
+        place(c, im, x, yy, 1, rot, guard=True); place(c, lb, x, yy - 2 * u, 1, rot, guard=True)
 
 
 # 16
@@ -3188,7 +3218,7 @@ def engrave(gray, period):
 @effect('banknote', '紙鈔：把你變成一張紙鈔風格的鈔票（虛構設計，不是真鈔）')
 def fx_banknote(c, e):
     u = c.W / 1080; al = fade(c, e); k = ease_out(c.lt / 0.4)
-    nw = int(c.W * 0.96); nh = int(nw * 0.5); ink = np.float32(rgb(e.o.get('color'), (34, 92, 70))) / 255
+    nw = int(c.W * 0.88); nh = int(nw * 0.5); ink = np.float32(rgb(e.o.get('color'), (34, 92, 70))) / 255
     def base():
         im = Image.new('RGBA', (nw, nh), (226, 222, 196, 255)); d = ImageDraw.Draw(im)
         for i in range(0, nw, max(4, int(11 * u))):  # guilloche wave pattern
@@ -3200,7 +3230,9 @@ def fx_banknote(c, e):
         col = tuple(int(v * 255) for v in ink) + (255,)
         val = e.o.get('value', '1000'); name = e.o.get('text', 'AITJB 創作券')
         d.text((50 * u, 40 * u), val, font=font('tcserif', 78 * u), fill=col); d.text((nw - 50 * u, nh - 40 * u), val, font=font('tcserif', 78 * u), fill=col, anchor='rd')
-        d.text((nw * 0.3, nh * 0.32), name, font=font('tcserif', 60 * u), fill=col, anchor='mm')
+        fs_ = 60 * u
+        while font('tcserif', fs_).getlength(name) > nw * 0.46 and fs_ > 12: fs_ *= 0.92
+        d.text((nw * 0.3, nh * 0.32), name, font=font('tcserif', fs_), fill=col, anchor='mm')
         d.text((nw * 0.3, nh * 0.5), e.o.get('words', '壹仟點 · AI 學習基金'), font=font('tcm', 34 * u), fill=col, anchor='mm')
         d.text((nw * 0.3, nh * 0.64), e.o.get('serial', 'AJ 037 2026 TW'), font=font('mono', 30 * u), fill=(170, 40, 40, 255), anchor='mm')
         d.text((nw * 0.3, nh * 0.8), '本券為娛樂設計，非法定貨幣', font=font('tcm', 22 * u), fill=col, anchor='mm')
@@ -3239,7 +3271,8 @@ def fx_live_cursor(c, e):
         c.m = cv2.warpAffine(c.m, np.float32([[1, 0, dx], [0, 1, 0]]), (c.W, c.H))
         c.fx += dx
     fk = ease_out((c.lt - 0.1) / 0.3)
-    lay = Image.new('RGBA', (c.W, c.H), (0, 0, 0, 0)); d = ImageDraw.Draw(lay); x0, x1 = bx0 + dx - 20 * u, bx1 + dx + 20 * u; y0 = by0 - 20 * u
+    lay = Image.new('RGBA', (c.W, c.H), (0, 0, 0, 0)); d = ImageDraw.Draw(lay)
+    x0, x1 = max(8 * u, bx0 + dx - 20 * u), min(c.W - 8 * u, bx1 + dx + 20 * u); y0 = max(40 * u, by0 - 20 * u)
     if fk > 0:
         d.rectangle([x0, y0, x1, by1], outline=col + (int(255 * fk),), width=max(2, int(4 * u)))
         hs = 18 * u
@@ -3267,9 +3300,9 @@ def fx_live_cursor(c, e):
 @effect('paper-tear', '撕報紙：報紙頭版從中間撕開往左右飛走，露出你的影片')
 def fx_paper_tear(c, e):
     u = c.W / 1080; head = e.o.get('text', '本週 AI 大事'); sub = e.o.get('sub', '一次看懂，三分鐘')
-    bx = (int(46 * u), int(c.H * 0.36), int(c.W - 46 * u), int(c.H * 0.36 + (c.W - 92 * u) * 0.78))
+    bx = news_box(c, u)
     def mk():
-        pg = to_np(news_page(c.W, c.H, head, sub, bx, e.o.get('date', '中華民國 115 年 11 月 13 日 星期五')))
+        pg = to_np(news_page(c.W, c.H, head, sub, bx, e.o.get('date') or roc_today()))
         pg[bx[1]:bx[3], bx[0]:bx[2], :3] = news_photo(c, *bx)
         rnd = random.Random(4); ys = np.arange(0, c.H + 24, 24); xs = c.W / 2 + np.array([rnd.uniform(-1, 1) * 34 * u for _ in ys])
         tear = np.interp(np.arange(c.H), ys, xs).astype(np.float32)
@@ -3330,7 +3363,10 @@ def fx_blow_away(c, e):
     xx = np.arange(c.W, dtype=np.float32)[None, :]
     fxp = front_x(c.lt)
     keep = np.clip(((xx - fxp) + noise) / (8 * u), 0, 1) if wind < 0 else np.clip(((fxp - xx) + noise) / (8 * u), 0, 1)
-    pm = c.m * keep; gone = c.m * (1 - keep)
+    pm = c.m * keep
+    k_ = max(3, int(12 * u)) | 1  # reach a little past your outline, so the soft edge of the cut-out doesn't stay behind
+    m_wide = cv2.GaussianBlur(cv2.dilate(c.m, np.ones((k_, k_), np.uint8)), (0, 0), 3 * u)
+    gone = np.clip(m_wide * (1 - keep), 0, 1)
     def seeds():
         step = max(2, int(3 * u)); ys, xs = np.nonzero(c.m[::step, ::step] > 0.5); ys, xs = ys * step, xs * step
         jitter = np.random.default_rng(7).random((2, len(xs))).astype(np.float32)
@@ -3368,7 +3404,7 @@ def fx_sketch_words(c, e):
     lines = opt_lines(e, 'text', '想法|→ 腳本|→ 拍攝|→ AI 剪輯|✓ 發布')
     ink = (70, 70, 78); y = c.H * 0.08; per = max(0.3, (e.d - 0.6) / max(1, len(lines)))
     for j, ln in enumerate(lines):
-        im = cached(e, ('l', j), lambda: text_img(ln, 92 * u, 'tchand' if has_cjk(ln) else 'hand', ink))
+        im = cached(e, ('l', j), lambda: fit_text(ln, c.W * 0.84, 'tchand' if has_cjk(ln) else 'hand', int(min(92 * u, (max(head_top(e), c.H * 0.3) - c.H * 0.06) / max(1, len(lines)) / 1.05)), fill=ink))
         a = np.asarray(im, np.float32) / 255; g = cached(e, ('g', j), lambda: (np.random.default_rng(j).random(a.shape[:2]) > 0.18).astype(np.float32))
         a[..., 3] *= g * 0.9
         rv = clamp((c.lt - 0.3 - per * j) / (per * 0.85))
@@ -3539,7 +3575,7 @@ def main():
         for kv in a.opt: k, v = kv.split('=', 1); d[k] = v
         plan = [d]
     for d in plan:
-        d['fx'] = ALIASES.get(d['fx'].lower().lstrip('/').strip(), d['fx'].lower().lstrip('/').strip().replace('_', '-'))
+        k_ = d['fx'].lower().lstrip('/').strip(); d['fx'] = ALIASES.get(k_, ALIASES.get(k_.replace(' ', ''), k_.replace('_', '-')))
         if d['fx'] in LOOK_NAMES: d['fx'], look = LOOK_NAMES[d['fx']]; d.setdefault('look', look)
         if d['fx'] not in EFFECTS: sys.exit(f"Unknown effect '{d['fx']}'. Run --list to see all {len(EFFECTS)}.")
     fr, fps, dur, sw, sh = probe(src)

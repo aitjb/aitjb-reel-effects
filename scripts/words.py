@@ -45,8 +45,7 @@ def _transcribe(src, model_name=None):
     try:
         import mlx_whisper
         r = mlx_whisper.transcribe(src, path_or_hf_repo='mlx-community/whisper-large-v3-turbo', word_timestamps=True, language=lang, initial_prompt=ZH_PROMPT if lang in (None, 'zh') else None)
-        return [{'w': w['word'].strip(), 's': round(w['start'], 2), 'e': round(w['end'], 2)}
-                for seg in r['segments'] for w in seg.get('words', [])]
+        return merge_pieces([(w['word'], w['start'], w['end']) for seg in r['segments'] for w in seg.get('words', [])])
     except ImportError:
         pass
     try:
@@ -63,7 +62,20 @@ def _transcribe(src, model_name=None):
         lang = info.language
     segs, _ = model.transcribe(audio, word_timestamps=True, vad_filter=True, language=lang,
                                initial_prompt=ZH_PROMPT if lang == 'zh' else None)
-    return [{'w': w.word.strip(), 's': round(w.start, 2), 'e': round(w.end, 2)} for s in segs for w in (s.words or [])]
+    return merge_pieces([(w.word, w.start, w.end) for s in segs for w in (s.words or [])])
+
+
+def merge_pieces(raw):
+    """Whisper sometimes splits an English word inside Chinese speech ("C" "la" "ude"). Pieces that had no space
+    before them are glued back onto the English piece before, so captions show "Claude"."""
+    out = []
+    for word, s, e in raw:
+        t = word.strip()
+        if not t: continue
+        glue = out and not word.startswith(' ') and t[0].isascii() and t[0].isalnum() and out[-1]['w'][-1:].isascii() and out[-1]['w'][-1:].isalnum()
+        if glue: out[-1]['w'] += t; out[-1]['e'] = round(e, 2)
+        else: out.append({'w': t, 's': round(s, 2), 'e': round(e, 2)})
+    return out
 
 
 def words_path(src): return os.path.splitext(src)[0] + '.words.json'
