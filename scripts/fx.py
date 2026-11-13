@@ -2593,7 +2593,11 @@ def person_box(c, thr=0.5):
 
 
 def clean_plate(c, e):
-    """The room without you: filled in once from the first frame of the effect (soft, so it reads as an empty set)."""
+    """The room without you. With plate=<image of the same shot with nobody in it> (e.g. the empty chair), that image is used;
+    otherwise it is filled in once from the first frame of the effect (soft, so it reads as an empty set)."""
+    pl = e.o.get('plate')
+    if pl and os.path.exists(str(pl)):
+        return cached(e, 'plate', lambda: np.asarray(Image.open(str(pl)).convert('RGB').resize((c.W, c.H), Image.LANCZOS), np.float32) / 255)
     def mk():
         s = 4; w, h = c.W // s, c.H // s
         small = cv2.resize((c.img * 255).astype(np.uint8), (w, h), interpolation=cv2.INTER_AREA)
