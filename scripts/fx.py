@@ -58,7 +58,7 @@ ALIASES = {'the-noise': 'noise', 'the-lineup': 'lineup', 'bill': 'the-bill', 'to
            'paper_cut': 'paper-cut', 'paper cut': 'paper-cut', 'doodle boil': 'doodle-boil', 'headline wall': 'headline-wall',
            'cover story': 'cover-story', 'frame break': 'frame-break', 'glass_widgets': 'glass-widgets', 'carousel_spin': 'carousel-spin',
            '彈跳長條圖': 'split-graph', '繞頭轉圈': 'orbit', '剪輯時間軸': 'timeline', '設定開關': 'apple-toggles', '透明面板': 'glass-widgets',
-           '勾選按鈕': 'check-pills', '隧道': 'rabbit-hole', '紅色拼貼': 'red-collage', '旋轉木馬': 'carousel-spin', '玻璃圖表': 'liquid-glass-graph',
+           '勾選按鈕': 'check-pills', '隧道': 'rabbit-hole', '紅色拼貼': 'red-collage', '大字拼貼': 'red-collage', '旋轉木馬': 'carousel-spin', '玻璃圖表': 'liquid-glass-graph',
            '待辦清單': 'checklist', 'led看板': 'led-sign', '新聞切換': 'match-cut', '肩後拉近': 'over-the-shoulder-zoom', '發光字': 'spotlight',
            '聊天畫面': 'ui-world', '手機模型': 'phone-mockup', '玻璃字': 'glass-type', '發光折線': 'chart-grow', '剪紙拼貼': 'paper-cut',
            '訊息通知': 'messages', '蠟筆塗鴉': 'doodle-boil', '標題牆': 'headline-wall', '雜誌封面': 'cover-story', '衝出手機': 'frame-break',
@@ -915,23 +915,24 @@ def fx_red_collage(c, e):
     bw = grade(c.img, 'bw'); out = bw * m + bw * 0.62 * (1 - m)
     c.img = c.img * (1 - k) + out * k
     vignette(c, 0.45 * k)
-    red = rgb(e.o.get('color'), RED); al = fade(c, e)
-    w = cached(e, 'w', lambda: fit_text(e.o.get('text', 'EDIT').upper(), c.W * 0.98, 'uib', 700, fill=red, glow=(red, 34)))
+    red = rgb(e.o.get('color'), (255, 46, 166)); al = fade(c, e)  # 電光粉 #FF2EA6
+    w = cached(e, 'w', lambda: fit_text(e.o.get('text', 'EDIT').upper(), c.W * 0.98, 'uib', 700, fill=red, glow=(red, int(e.o.get('glow', 12)))))
     s = 1.12 - 0.12 * ease_out(c.lt / 0.4)
     place(c, w, c.W / 2, max(w.height * 0.42, c.fy - c.fw * 1.05), s, 0, clamp(c.lt / 0.12) * al, behind=True)
     lines = e.o.get('lines', 'ONE CLIP.|55 EFFECTS.|ZERO APPS.').split('|')
     size = cached(e, 'sz', lambda: lines_fit(lines, c.W * 0.8, 'uib', int(c.W * 0.14)))
     y = max(c.H * 0.5, c.fy + c.fw * 1.55)
     for j, ln in enumerate(lines):
-        im = cached(e, ('l', j), lambda: text_img(ln, size, 'uib', red if j == 1 else (255, 255, 255), shadow=8))
+        im = cached(e, ('l', j), lambda: text_img(ln, size, 'uib', rgb(e.o.get('color2'), red) if j == 1 else (255, 255, 255), shadow=8))
         kk = clamp((c.lt - 0.18 - 0.13 * j) / 0.16)
         if kk > 0: place(c, im, c.W * 0.05 + im.width / 2, y + im.height / 2, 1.4 - 0.4 * ease_out(kk), 0, kk * al, guard=True)
         y += size * 1.0
-    tag = cached(e, 'tag', lambda: text_img(e.o.get('tag', 'REC  ·  RED COLLAGE'), c.W * 0.027, 'mono', red))
-    dot = Image.new('RGBA', (int(tag.height * 0.4),) * 2, (0, 0, 0, 0)); ImageDraw.Draw(dot).ellipse([0, 0, dot.width - 1, dot.width - 1], fill=red + (255,))
-    blink = 1.0 if int(c.lt * 2.5) % 2 == 0 else 0.35
-    place(c, dot, c.W * 0.07, c.H * 0.93, alpha=al * k * blink, guard=True)
-    place(c, tag, c.W * 0.07 + dot.width + tag.width / 2, c.H * 0.93, alpha=al * k, guard=True)
+    if e.o.get('tag'):  # 預設不顯示左下角小標；要的話給 tag
+        tag = cached(e, 'tag', lambda: text_img(e.o.get('tag'), c.W * 0.027, 'mono', red))
+        dot = Image.new('RGBA', (int(tag.height * 0.4),) * 2, (0, 0, 0, 0)); ImageDraw.Draw(dot).ellipse([0, 0, dot.width - 1, dot.width - 1], fill=red + (255,))
+        blink = 1.0 if int(c.lt * 2.5) % 2 == 0 else 0.35
+        place(c, dot, c.W * 0.07, c.H * 0.93, alpha=al * k * blink, guard=True)
+        place(c, tag, c.W * 0.07 + dot.width + tag.width / 2, c.H * 0.93, alpha=al * k, guard=True)
 
 
 @effect('split-headline', 'a clean headline card slides down and pushes you into the bottom of the frame')
@@ -2716,7 +2717,7 @@ def news_photo(c, x0, y0, x1, y1, cell=None):
     return paper * (1 - ink[..., None] * 0.92) + np.float32([20, 18, 16]) / 255 * ink[..., None] * 0.92
 
 
-LIME, PINK = (205, 245, 28), (255, 46, 147)  # @ai_tjb 品牌色：萊姆綠 #CDF51C × 電光粉 #FF2E93
+LIME, PINK = (205, 245, 28), (255, 46, 166)  # @ai_tjb 品牌色：萊姆綠 #CDF51C × 電光粉 #FF2EA6
 
 
 # 1 ---------------------------------------------------------------- vol.15
@@ -3496,7 +3497,7 @@ class Ctx: pass
 # aitjb：沿用引擎的效果時，預設文字改成繁體中文 (使用者給的文字永遠優先)
 ZH_DEFAULTS = {
     'led-sign': {'text': 'AI 創作'},
-    'red-collage': {'text': '剪輯', 'lines': '一支影片|37 個特效|不用剪輯軟體', 'tag': 'REC · 紅色拼貼'},
+    'red-collage': {'text': 'AI', 'lines': '一支影片|37 個特效|不用剪輯軟體'},
     'checklist': {'title': 'Claude 正在剪你的影片', 'text': '找到你的臉::每一格|把你從背景去背::AI 遮罩|把字放到你身後::景深|加上音效::自動'},
     'apple-toggles': {'text': '一支影片|輸入 /effects|不用剪輯軟體'},
     'timeline': {'text': '自動剪輯', 'sub': 'Claude 幫你剪'},

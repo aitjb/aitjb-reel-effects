@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'scripts'))
 MENU = [('split-graph', '彈跳長條圖'), ('orbit', '繞頭轉圈'), ('timeline', '剪輯時間軸'), ('apple-toggles', '設定開關'),
-        ('glass-widgets', '透明面板'), ('check-pills', '勾選按鈕'), ('rabbit-hole', '隧道'), ('red-collage', '紅色拼貼'),
+        ('glass-widgets', '透明面板'), ('check-pills', '勾選按鈕'), ('rabbit-hole', '隧道'), ('red-collage', '大字拼貼'),
         ('carousel-spin', '旋轉木馬'), ('liquid-glass-graph', '玻璃圖表'), ('checklist', '待辦清單'), ('led-sign', 'LED 看板'),
         ('match-cut', '新聞切換'), ('over-the-shoulder-zoom', '肩後拉近'), ('spotlight', '發光字'), ('ui-world', '聊天畫面'),
         ('phone-mockup', '手機模型'), ('glass-type', '玻璃字'), ('chart-grow', '發光折線'), ('paper-cut', '剪紙拼貼'),
