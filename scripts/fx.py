@@ -1106,7 +1106,6 @@ def fx_profile_wall(c, e):
         tabs = ('Posts', 'Reels', 'Tagged'); f = font('uim', W * 0.032)
         for j, tb in enumerate(tabs):
             x = pw * (0.2 + 0.3 * j); d.text((x, ph * 0.06), tb, font=f, fill=((255, 255, 255, 255) if j == 1 else (130, 130, 136, 255)), anchor='mm')
-            if j == 1: d.rectangle([x - pw * 0.08, ph * 0.1, x + pw * 0.08, ph * 0.1 + 4], fill=(255, 255, 255, 255))
         gr = thumb_grid(e.cards, 4, 2, int(pw * 0.225), int(pw * 0.012), look=False)
         im.alpha_composite(gr, ((pw - gr.width) // 2, int(ph * 0.14))); return shadowed(im, 20, 10, 110)
     wl = cached(e, 'wall', wall)
@@ -1115,7 +1114,9 @@ def fx_profile_wall(c, e):
     g = glass(c, cw, chh, chh * 0.18, W / 2, cy, amt=0.5, tint=(12, 12, 14)); d = ImageDraw.Draw(g)
     target = int(e.o.get('count', 197000)); n = int(target * ease_out((c.lt - 0.2) / 0.8))
     swap = clamp((c.lt - 1.15) / 0.2)
-    if swap < 1: d.text((cw / 2, chh * 0.33), f'{n:,}', font=font('uib', chh * 0.3), fill=(255, 255, 255, int(255 * (1 - swap))), anchor='mm')
+    if e.o.get('unit'): swap = 0; n_txt = f"{n:,} {e.o['unit']}"
+    else: n_txt = f'{n:,}'
+    if swap < 1: d.text((cw / 2, chh * 0.33), n_txt, font=font('uib', chh * 0.3), fill=(255, 255, 255, int(255 * (1 - swap))), anchor='mm')
     if swap > 0: d.text((cw / 2, chh * 0.33), e.o.get('label', 'views'), font=font('uib', chh * 0.3), fill=(255, 255, 255, int(255 * swap)), anchor='mm')
     av = face_chip(c, e, chh * 0.3); g.alpha_composite(av, (int(chh * 0.14), int(chh * 0.58)))
     d.text((chh * 0.52, chh * 0.68), e.o.get('name', PROFILE['handle'].lstrip('@')), font=font('uib', chh * 0.09), fill=(255, 255, 255, 255), anchor='lm')
@@ -1314,17 +1315,17 @@ def fx_checklist(c, e):
     d.text((80 * u, hh / 2), e.o.get('title', 'Claude is editing your clip'), font=font('uib', 42 * u), fill=(255, 255, 255, 255), anchor='lm')
     nd = sum(c.lt >= t for t in done_at)
     d.text((cw - 36 * u, hh / 2), f'{nd}/{n}', font=font('uim', 28 * u), fill=(170, 170, 176, 255), anchor='rm')
-    d.line([(30 * u, hh), (cw - 30 * u, hh)], fill=(255, 255, 255, 30), width=max(1, int(2 * u)))
     for i, (txt, meta) in enumerate([(r + [''])[:2] for r in rows]):
         y = hh + 13 * u + rh * i + rh / 2; x = 56 * u; r_ = 24 * u
         start = done_at[i - 1] if i else 0.3
         if c.lt >= done_at[i]:
             q = ease_back((c.lt - done_at[i]) / 0.25); rr = r_ * (0.6 + 0.4 * q)
-            d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=(52, 199, 89, 255)); tick(d, x - rr * 0.5, y - rr * 0.45, rr, w=int(5 * u))
-            fc, mc = (255, 255, 255, 255), (52, 199, 89, 255)
+            ck = rgb(e.o.get('color'), (52, 199, 89)); tc = (17, 17, 17, 255) if sum(ck) > 500 else (255, 255, 255, 255)
+            d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=ck + (255,)); tick(d, x - rr * 0.5, y - rr * 0.45, rr, color=tc, w=int(5 * u))
+            fc, mc = (255, 255, 255, 255), ck + (255,)
         elif c.lt >= start:
             a0 = (c.lt * 540) % 360; d.ellipse([x - r_, y - r_, x + r_, y + r_], outline=(255, 255, 255, 50), width=int(5 * u))
-            d.arc([x - r_, y - r_, x + r_, y + r_], a0, a0 + 100, fill=(217, 119, 87, 255), width=int(5 * u)); fc, mc = (255, 255, 255, 255), (170, 170, 176, 255)
+            d.arc([x - r_, y - r_, x + r_, y + r_], a0, a0 + 100, fill=PINK + (255,), width=int(5 * u)); fc, mc = (255, 255, 255, 255), (170, 170, 176, 255)
         else:
             d.ellipse([x - r_, y - r_, x + r_, y + r_], outline=(255, 255, 255, 60), width=int(4 * u)); fc, mc = (255, 255, 255, 110), (170, 170, 176, 90)
         d.text((x + 48 * u, y), txt, font=font('uib', 40 * u), fill=fc, anchor='lm')
@@ -1378,7 +1379,9 @@ def glass_widgets_v2(c, e):
     # 1 · stat tile
     S = 300 * u; ax, ay = 50 * u + S / 2, 118 * u + S / 2
     a = G(S, S, ax, ay); d = ImageDraw.Draw(a)
-    d.ellipse([S * 0.1, S * 0.115, S * 0.16, S * 0.175], fill=ORANGE + (255,))
+    import logos as _lg; _l = _lg.logo_image('claude', int(S * 0.085))
+    if _l is not None: a.alpha_composite(_l.convert('RGBA'), (int(S * 0.09), int(S * 0.145 - _l.height / 2)))
+    else: d.ellipse([S * 0.1, S * 0.115, S * 0.16, S * 0.175], fill=ORANGE + (255,))
     d.text((S * 0.2, S * 0.145), e.o.get('title', 'Claude'), font=font('uim', S * 0.085), fill=white + (235,), anchor='lm')
     d.text((S * 0.08, S * 0.2), e.o.get('text', '38'), font=font('uib', S * 0.44), fill=white + (255,))
     for j, ln in enumerate(e.o.get('sub', 'effects|one clip').split('|')): d.text((S * 0.1, S * (0.7 + 0.11 * j)), ln, font=font('uim', S * 0.085), fill=white + (235,))
@@ -1386,7 +1389,7 @@ def glass_widgets_v2(c, e):
     # 2 · render bar
     bw, bh = 400 * u, 150 * u; bx, by = W - 50 * u - bw / 2, 118 * u + bh / 2
     b = G(bw, bh, bx, by, bh * 0.28); d = ImageDraw.Draw(b); p = ease_inout(c.lt / max(0.3, e.d * 0.85))
-    d.ellipse([bh * 0.17, bh * 0.2, bh * 0.28, bh * 0.31], fill=(255, 69, 58, 255))
+    d.ellipse([bh * 0.17, bh * 0.2, bh * 0.28, bh * 0.31], fill=PINK + (255,))
     d.text((bh * 0.36, bh * 0.255), 'Rendering', font=font('uim', bh * 0.19), fill=white + (240,), anchor='lm')
     d.rounded_rectangle([bh * 0.17, bh * 0.5, bw - bh * 0.17, bh * 0.6], bh * 0.05, fill=white + (70,))
     d.rounded_rectangle([bh * 0.17, bh * 0.5, bh * 0.17 + (bw - bh * 0.34) * max(0.04, p), bh * 0.6], bh * 0.05, fill=white + (245,))
@@ -1404,20 +1407,20 @@ def glass_widgets_v2(c, e):
     art = G(aw, ah, dx, dy, 44 * u); d = ImageDraw.Draw(art)
     d.text((24 * u, 30 * u), 'artifact · views.html', font=font('mono', 15 * u), fill=white + (220,), anchor='lm')
     inn = rrect(aw - 36 * u, ah - 74 * u, 20 * u, (250, 248, 244, 255)); di = ImageDraw.Draw(inn); iw, ih = inn.size
-    for j in range(3): di.ellipse([14 * u + j * 16 * u, 14 * u, 24 * u + j * 16 * u, 24 * u], fill=((255, 95, 87), (255, 189, 46), (40, 200, 64))[j] + (255,))
-    di.text((16 * u, 40 * u), 'Top reels', font=font('uib', 26 * u), fill=(24, 22, 26, 255))
-    di.text((16 * u, 72 * u), '197K', font=font('anton', 44 * u), fill=(200, 85, 61, 255))
+    for j in range(3): di.ellipse([14 * u + j * 16 * u, 14 * u, 24 * u + j * 16 * u, 24 * u], fill=(245, 243, 238, 150))
+    di.text((16 * u, 40 * u), e.o.get('top_label', 'Top reels'), font=font('uib', 26 * u), fill=(24, 22, 26, 255))
+    di.text((16 * u, 72 * u), e.o.get('top', '197K'), font=font('anton', 44 * u), fill=PINK + (255,))
     vals = [197, 140, 124, 83, 50, 40, 38]; gx0, gx1, gy1 = 16 * u, iw - 16 * u, ih - 18 * u; bwid = (gx1 - gx0) / 7 * 0.66
     for j, v in enumerate(vals):
         q = ease_out((c.lt - 0.35 - 0.05 * j) / 0.4); hh = (ih * 0.42) * v / 197 * q; x0 = gx0 + (gx1 - gx0) * j / 7
-        if hh > 1: di.rounded_rectangle([x0, gy1 - hh, x0 + bwid, gy1], 5 * u, fill=((242, 196, 109) if j == 0 else (200, 85, 61)) + (255,))
+        if hh > 1: di.rounded_rectangle([x0, gy1 - hh, x0 + bwid, gy1], 5 * u, fill=(LIME if j == 0 else PINK) + (255,))
     art.alpha_composite(inn, (int(18 * u), int(56 * u)))
     show(art, dx, dy, 3)
     # 5 · now playing
     mw, mh = 360 * u, 220 * u; mx, my = W - 50 * u - mw / 2, cy3 + bh / 2 + 22 * u + mh / 2
     mu = G(mw, mh, mx, my, 40 * u); d = ImageDraw.Draw(mu); A = 96 * u
     t = np.linspace(0, 1, int(A), dtype=np.float32)[:, None, None]
-    art2 = Image.fromarray(np.concatenate([(np.float32([255, 150, 110]) * (1 - t) + np.float32([217, 90, 70]) * t) * np.ones((1, int(A), 1), np.float32), np.full((int(A), int(A), 1), 255, np.float32)], 2).astype(np.uint8), 'RGBA')
+    art2 = Image.fromarray(np.concatenate([(np.float32([255, 46, 166]) * (1 - t) + np.float32([255, 46, 166]) * t) * np.ones((1, int(A), 1), np.float32), np.full((int(A), int(A), 1), 255, np.float32)], 2).astype(np.uint8), 'RGBA')
     am = Image.new('L', art2.size, 0); ImageDraw.Draw(am).rounded_rectangle([0, 0, art2.width - 1, art2.height - 1], 16 * u, fill=255); art2.putalpha(am)
     ad = ImageDraw.Draw(art2)
     for k_ in range(6):
@@ -1438,25 +1441,25 @@ def glass_widgets_v2(c, e):
     # 6 · calendar
     kw, kh = 330 * u, 190 * u; kx, ky = 50 * u + kw / 2, dy + ah / 2 + 26 * u + kh / 2
     ca = G(kw, kh, kx, ky, 40 * u); d = ImageDraw.Draw(ca)
-    d.text((26 * u, 36 * u), e.o.get('day', 'WED'), font=font('uib', 22 * u), fill=(255, 92, 82, 255), anchor='lm')
+    d.text((26 * u, 36 * u), e.o.get('day', 'WED'), font=font('uib', 22 * u), fill=PINK + (255,), anchor='lm')
     d.text((26 * u, 82 * u), e.o.get('date', '21'), font=font('uib', 56 * u), fill=white + (255,), anchor='lm')
-    d.rounded_rectangle([22 * u, 120 * u, kw - 22 * u, 168 * u], 12 * u, fill=(255, 92, 82, 210))
+    d.rounded_rectangle([22 * u, 120 * u, kw - 22 * u, 168 * u], 12 * u, fill=PINK + (210,))
     d.text((36 * u, 144 * u), e.o.get('event', 'Post 2 reels · tonight'), font=font('uib', 22 * u), fill=white + (255,), anchor='lm')
     show(ca, kx, ky, 5)
     # 7 · 4K ring
     R = 250 * u; rx, ry = W - 50 * u - R / 2, my + mh / 2 + 26 * u + R / 2
     rg = G(R, R, rx, ry, 56 * u); d = ImageDraw.Draw(rg); rp = ease_inout((c.lt - 0.4) / 1.0); rr = R * 0.34
     d.ellipse([R / 2 - rr, R / 2 - rr - 8 * u, R / 2 + rr, R / 2 + rr - 8 * u], outline=white + (60,), width=int(16 * u))
-    if rp > 0: d.arc([R / 2 - rr, R / 2 - rr - 8 * u, R / 2 + rr, R / 2 + rr - 8 * u], -90, -90 + 360 * rp, fill=(52, 199, 89, 255), width=int(16 * u))
+    if rp > 0: d.arc([R / 2 - rr, R / 2 - rr - 8 * u, R / 2 + rr, R / 2 + rr - 8 * u], -90, -90 + 360 * rp, fill=LIME + (255,), width=int(16 * u))
     d.text((R / 2, R / 2 - 8 * u), '4K', font=font('uib', 52 * u), fill=white + (255,), anchor='mm')
     d.text((R / 2, R - 26 * u), 'render', font=font('uim', 20 * u), fill=white + (210,), anchor='mm')
     show(rg, rx, ry, 6)
     # 8 · Edited by Claude pill (in front)
     f1, f2 = font('uim', W * 0.045), font('uib', W * 0.045); pre, hi = 'Edited by ', 'Claude'
     tw = f1.getlength(pre) + f2.getlength(hi); ph = W * 0.105; pw = tw + ph * 0.9; py = H * 0.875
-    q = glass(c, pw, ph, ph / 2, W / 2, py, amt=0.16, tint=(70, 70, 76)); d = ImageDraw.Draw(q)
+    q = glass(c, pw, ph, ph / 2, W / 2, py, amt=0.06, tint=(40, 40, 44), blur=40); d = ImageDraw.Draw(q)
     d.text(((pw - tw) / 2, ph / 2), pre, font=f1, fill=white + (255,), anchor='lm')
-    d.text(((pw - tw) / 2 + f1.getlength(pre), ph / 2), hi, font=f2, fill=(255, 176, 146, 255), anchor='lm')
+    d.text(((pw - tw) / 2 + f1.getlength(pre), ph / 2), hi, font=f2, fill=PINK + (255,), anchor='lm')
     show(shadowed(q, 14, 6, 70), W / 2, py, 7, front=True)
 
 
@@ -1714,7 +1717,6 @@ def fx_apple_toggles(c, e):
         f = font('ui', W * 0.05)
         for i, s in enumerate(rows):
             d.text((W * 0.05, i * rh + rh / 2), s, font=f, fill=(18, 18, 20, 255), anchor='lm')
-            if i: d.line([(W * 0.05, i * rh), (cw, i * rh)], fill=(222, 222, 226, 255), width=max(2, W // 900))
         pad = max(10, W // 60) * 2 + W // 90
         return shadowed(im, max(10, W // 60), W // 90, 110), pad
     sh, pad = cached(e, 'base', base)
@@ -3074,7 +3076,7 @@ def fx_clone_row(c, e):
             cl = warp_rgba(L, M, c.W, c.H); cl[..., :3] *= dim
             comp(c, cl, 0, 0, clamp(spread * 1.6) * (0.6 + 0.4 * (1 - kout)), behind=True)
     if 0 < kout < 1:
-        flash = math.exp(-((kout - 0.95) / 0.08) ** 2) * 0.35
+        flash = math.exp(-((kout - 0.95) / 0.08) ** 2) * float(e.o.get('flash', 0.35))
         c.img = np.clip(c.img + flash * c.m[..., None], 0, 1)
 
 
