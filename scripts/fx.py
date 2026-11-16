@@ -403,7 +403,7 @@ def fx_spotlight(c, e):
     bright = 1 - k * (1 - (0.2 + 0.45 * pool))
     f = bright * (1 - c.m) + c.m * (1 + 0.04 * k)
     if e.o.get('text'):
-        word = e.o['text']; col = rgb(e.o.get('color'), PEACH)
+        word = e.o['text']; col = rgb(e.o.get('color'), PINK)
         im = cached(e, 'w', lambda: fit_text(word, c.W * 0.9, e.o.get('font', 'serif'), fill=col, glow=(col, 26)))
         c.img *= f[..., None]
         place(c, im, c.W / 2, c.fy - c.fw * 1.1, alpha=k, behind=True)
@@ -1264,7 +1264,7 @@ def fx_headline_wall(c, e):
                                          'How to make your resume un-rejectable using Claude::83K views|Same prompt: Claude Fable 5 vs ChatGPT 5.6 Sol::50K views|'
                                          'Jev, the new AI model faster and cheaper than Claude::40K views|Scrape LinkedIn automatically::38K views|'
                                          'Protect your personal data on the internet::140K views').split('|')]
-    looks = [((255, 255, 255), (20, 20, 22)), ((22, 20, 24), (255, 255, 255)), ((246, 238, 226), (30, 24, 20)), ((255, 214, 10), (20, 20, 22))]
+    looks = [((255, 255, 255), (20, 20, 22)), ((22, 20, 24), (255, 255, 255)), ((246, 238, 226), (30, 24, 20)), (LIME, (20, 20, 22))]
     def hcard(i):
         title, meta = (items[i % len(items)] + [''])[:2]; bg, fg = looks[i % len(looks)]
         cw = int(W * 0.5); f = font('uib', cw * 0.085); words = title.split(' '); lines, cur = [], ''
@@ -1277,7 +1277,7 @@ def fx_headline_wall(c, e):
         im = rrect(cw, chh, cw * 0.04, bg + (255,)); d = ImageDraw.Draw(im)
         for j, ln in enumerate(lines): d.text((cw * 0.08, cw * 0.07 + j * lh), ln, font=f, fill=fg + (255,))
         my = chh - cw * 0.085; s = cw * 0.04
-        d.polygon([(cw * 0.08, my - s / 2), (cw * 0.08, my + s / 2), (cw * 0.08 + s * 0.9, my)], fill=(255, 48, 64, 255))
+        d.polygon([(cw * 0.08, my - s / 2), (cw * 0.08, my + s / 2), (cw * 0.08 + s * 0.9, my)], fill=PINK + (255,))
         d.text((cw * 0.08 + s * 1.5, my), (e.o.get('handle', PROFILE['handle']) + '  ·  ' + meta) if meta else e.o.get('handle', PROFILE['handle']), font=font('uim', cw * 0.045), fill=fg + (170,), anchor='lm')
         return shadowed(im, 14, 8, 110)
     N = int(e.o.get('count', 13))
@@ -1291,10 +1291,10 @@ def fx_headline_wall(c, e):
         place(c, cards[i], x * W, y * H, 0.55 + 0.45 * kk, r, al * clamp((c.lt - t0) / 0.06), behind=True)
     t1 = N * gap + 0.1
     if c.lt > t1:
-        tot = e.o.get('total', '672K'); lab = e.o.get('label', 'views from 7 reels')
+        tot = e.o.get('total', '37'); lab = e.o.get('label', 'effects')
         a = text_img(tot, 96 * u, 'anton', (255, 255, 255)); b = text_img(lab, 34 * u, 'uib', (255, 255, 255))
         pw = int(a.width + b.width + 30 * u); ph = int(max(a.height, b.height) + 10 * u)
-        pill = rrect(pw, ph, ph * 0.28, (217, 119, 87, 245)); pill.alpha_composite(a, (int(8 * u), (ph - a.height) // 2)); pill.alpha_composite(b, (int(a.width + 8 * u), (ph - b.height) // 2))
+        pill = rrect(pw, ph, ph * 0.28, PINK + (245,)); pill.alpha_composite(a, (int(8 * u), (ph - a.height) // 2)); pill.alpha_composite(b, (int(a.width + 8 * u), (ph - b.height) // 2))
         place(c, shadowed(pill, 18, 8, 110), W / 2, max(c.fy + c.fw * 1.8, H * 0.6), 0.6 + 0.4 * pop(c, t1, 0.3), -3, al * clamp((c.lt - t1) / 0.08), guard=True)
 
 
@@ -1599,7 +1599,7 @@ def fx_liquid_glass_graph(c, e):
     x0, x1, y0, y1 = pad, gw - pad, gh - pad * 0.9, gh * 0.36
     def ycurve(u): return y0 - (y0 - y1) * (u ** 1.5) + math.sin(u * 13) * gh * 0.018 * (1 - u)
     n = 60; pts = [(x0 + (x1 - x0) * j / n, ycurve(j / n)) for j in range(int(n * g) + 1)]
-    green = rgb(e.o.get('color'), (52, 211, 110))
+    green = rgb(e.o.get('color'), LIME)
     if len(pts) > 1:
         area = Image.new('RGBA', (gw, gh), (0, 0, 0, 0))
         ImageDraw.Draw(area).polygon(pts + [(pts[-1][0], y0), (x0, y0)], fill=green + (55,)); lay.alpha_composite(area)
@@ -1903,7 +1903,7 @@ def donut(size, pct, col, label, value):
 def glass_bento(c, e):
     W, H = c.W, c.H; al = fade(c, e) * clamp(c.lt / 0.12)
     if al <= 0: return
-    green = rgb(e.o.get('color'), (52, 211, 110)); peach = (255, 160, 122)
+    green = rgb(e.o.get('color'), LIME); peach = (255, 160, 122)
     # 1. the big graph, on a smoked glass screen behind you
     q = ease_out(c.lt / 0.4); pw, ph = int(W * 0.9), int(H * 0.3); pcx, pcy = W / 2, H * 0.08 + ph / 2 + (1 - q) * H * 0.02
     pan = glass(c, pw, ph, W * 0.04, pcx, pcy, amt=0.06, dark=0.62, blur=max(10, W // 30))
@@ -2018,20 +2018,20 @@ def glass_graph(c, cx, cy, k, prog, label, value, kind, scale=1.0):
             t = min(i, n); i0 = min(int(t), len(ys) - 2); f = t - i0; yv = ys[i0] + (ys[i0 + 1] - ys[i0]) * f
             pts.append((gx0 + (gx1 - gx0) * t / (len(ys) - 1), gy1 - (gy1 - gy0) * yv))
         if len(pts) > 1:
-            cd.polygon(pts + [(pts[-1][0], gy1), (pts[0][0], gy1)], fill=GREEN + (70,))
-            gl = Image.new('RGBA', lay.size, (0, 0, 0, 0)); ImageDraw.Draw(gl).line(pts, fill=GREEN + (255,), width=int(60 * v), joint='curve')
+            cd.polygon(pts + [(pts[-1][0], gy1), (pts[0][0], gy1)], fill=LIME + (70,))
+            gl = Image.new('RGBA', lay.size, (0, 0, 0, 0)); ImageDraw.Draw(gl).line(pts, fill=LIME + (255,), width=int(60 * v), joint='curve')
             chart.alpha_composite(gl.filter(ImageFilter.GaussianBlur(26 * v)))
-            cd = ImageDraw.Draw(chart); cd.line(pts, fill=GREEN + (255,), width=max(2, int(20 * v)), joint='curve')
+            cd = ImageDraw.Draw(chart); cd.line(pts, fill=LIME + (255,), width=max(2, int(20 * v)), joint='curve')
             ex, ey = pts[-1]
-            cd.ellipse([ex - 30 * v, ey - 30 * v, ex + 30 * v, ey + 30 * v], fill=GREEN + (90,)); cd.ellipse([ex - 15 * v, ey - 15 * v, ex + 15 * v, ey + 15 * v], fill=(235, 255, 240, 255))
+            cd.ellipse([ex - 30 * v, ey - 30 * v, ex + 30 * v, ey + 30 * v], fill=LIME + (90,)); cd.ellipse([ex - 15 * v, ey - 15 * v, ex + 15 * v, ey + 15 * v], fill=(255, 255, 255, 255))
     else:
         vals = [1.0, 0.71, 0.63, 0.42, 0.25, 0.20, 0.19]; bw = (gx1 - gx0) / len(vals)
         for i, val in enumerate(vals):
             g = ease_out(clamp(prog * 1.6 - i * 0.1)); top = gy1 - (gy1 - gy0) * val * g; bx = gx0 + i * bw + bw * 0.16
             if i == 0:
-                gl = Image.new('RGBA', lay.size, (0, 0, 0, 0)); ImageDraw.Draw(gl).rounded_rectangle([bx, top, bx + bw * 0.68, gy1], int(18 * v), fill=GREEN + (230,))
+                gl = Image.new('RGBA', lay.size, (0, 0, 0, 0)); ImageDraw.Draw(gl).rounded_rectangle([bx, top, bx + bw * 0.68, gy1], int(18 * v), fill=LIME + (230,))
                 chart.alpha_composite(gl.filter(ImageFilter.GaussianBlur(22 * v))); cd = ImageDraw.Draw(chart)
-            cd.rounded_rectangle([bx, top, bx + bw * 0.68, gy1], int(18 * v), fill=GREEN + (230 if i == 0 else 120,))
+            cd.rounded_rectangle([bx, top, bx + bw * 0.68, gy1], int(18 * v), fill=LIME + (230 if i == 0 else 120,))
     base.alpha_composite(chart); base.alpha_composite(lay)
     comp(c, base, x0 - o, y0 - o)
 
@@ -2048,7 +2048,7 @@ def fx_over_the_shoulder_zoom(c, e):
     if k1 <= 0 and k2 <= 0: return
     me, m = c.img.copy(), c.m[..., None]
     a, b = (e.o.get('text') or 'Views · this reel|Top reels · total').split('|')[:2]
-    va, vb = (str(e.o.get('to') or '197K|672K')).split('|')[:2]
+    va, vb = (str(e.o.get('to') or '1|37')).split('|')[:2]
     glass_graph(c, c.W * 0.43, c.H * 0.255, k1, clamp((p - 0.45) / 0.17), a, va, 'line')
     glass_graph(c, c.W * 0.57, c.H * 0.255, k2, clamp((p - 0.86) / 0.14), b, vb, 'bars')
     c.img = c.img * (1 - m) + me * m   # your head stays in front of the cards
@@ -3262,7 +3262,7 @@ def fx_banknote(c, e):
 # 17
 @effect('live-cursor', '即時游標：一個掛著 Claude 名牌的游標出現，連框抓住你拖到旁邊再放回來')
 def fx_live_cursor(c, e):
-    u = c.W / 1080; al = fade(c, e); name = e.o.get('text', 'Claude'); col = rgb(e.o.get('color'), (217, 119, 87))
+    u = c.W / 1080; al = fade(c, e); name = e.o.get('text', 'Claude'); col = rgb(e.o.get('color'), PINK)
     box = cached(e, 'box', lambda: person_box(c)); bx0, by0, bx1, by1 = box; by1 = min(by1, c.H - 6 * u)
     side = -1 if c.fx > c.W / 2 else 1; dist = float(e.o.get('dist', 0.22)) * c.W * side
     t1, t2 = 0.55, e.d - 0.6
@@ -3505,10 +3505,10 @@ ZH_DEFAULTS = {
     'timeline': {'text': '自動剪輯', 'sub': 'Claude 幫你剪'},
     'glass-widgets': {'sub': '個特效|一支影片', 'text': '37'},
     'liquid-glass-graph': {'text': '完播率'},
-    'over-the-shoulder-zoom': {'text': '這支觀看數|熱門 reels 總數'},
+    'over-the-shoulder-zoom': {'text': '一支影片|口播特效', 'to': '1|37'},
     'messages': {'title': '訊息', 'text': '這支怎麼剪的？？|等等 這是什麼 app|拜託分享特效|特效'},
-    'headline-wall': {'text': 'Claude Code 新手必學的 5 個指令::12.4 萬次觀看|一句話做出動態網頁::8.6 萬次觀看|AI 幫你剪片 全自動::6.1 萬次觀看',
-                      'label': '7 支 reels 的觀看數', 'total': '26.7萬'},
+    'headline-wall': {'text': 'Claude Code 新手必學的 5 個指令::口播特效|一句話做出動態網頁::口播特效|AI 幫你剪片 全自動::口播特效',
+                      'label': '個特效', 'total': '37'},
     'check-pills': {'text': '開場鉤子|字幕|剪接|B-roll', 'board': 'Reels · 37 個特效'},
     'spotlight': {}, 'match-cut': {}, 'orbit': {}, 'carousel-spin': {}, 'rabbit-hole': {},
 }
