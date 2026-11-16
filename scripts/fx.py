@@ -1320,7 +1320,7 @@ def fx_checklist(c, e):
         start = done_at[i - 1] if i else 0.3
         if c.lt >= done_at[i]:
             q = ease_back((c.lt - done_at[i]) / 0.25); rr = r_ * (0.6 + 0.4 * q)
-            ck = rgb(e.o.get('color'), (52, 199, 89)); tc = (17, 17, 17, 255) if sum(ck) > 500 else (255, 255, 255, 255)
+            ck = rgb(e.o.get('color'), LIME); tc = (17, 17, 17, 255) if sum(ck) > 500 else (255, 255, 255, 255)
             d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=ck + (255,)); tick(d, x - rr * 0.5, y - rr * 0.45, rr, color=tc, w=int(5 * u))
             fc, mc = (255, 255, 255, 255), ck + (255,)
         elif c.lt >= start:
@@ -1722,7 +1722,7 @@ def fx_apple_toggles(c, e):
     sh, pad = cached(e, 'base', base)
     ts = [float(x) for x in e.o['ticks'].split('|')] if e.o.get('ticks') else [0.45 + 0.34 * i for i in range(len(rows))]
     im = sh.copy(); d = ImageDraw.Draw(im)
-    off, on = np.float32((233, 233, 235)), np.float32(rgb(e.o.get('color'), (52, 199, 89)))
+    off, on = np.float32((233, 233, 235)), np.float32(rgb(e.o.get('color'), LIME))
     for i in range(len(rows)):
         u = ease_out((c.lt - ts[i]) / 0.2) if i < len(ts) else 0.0
         col = tuple(int(v) for v in off * (1 - u) + on * u) + (255,)
@@ -2815,9 +2815,9 @@ def fx_phone_mockup(c, e):
         for j in range(3):
             y = ph * (0.38 + 0.09 * j); d.rounded_rectangle([pw * 0.12, y, pw * 0.88, y + ph * 0.065], int(pw * 0.04), fill=(232, 229, 220, 255))
         bw_, bh_ = pw * 0.7 * (0.94 if pr else 1), ph * 0.085 * (0.94 if pr else 1); by = ph * 0.78
-        col = (52, 199, 89) if pr else (217, 119, 87)
+        col = LIME if pr else PINK
         d.rounded_rectangle([pw / 2 - bw_ / 2, by - bh_ / 2, pw / 2 + bw_ / 2, by + bh_ / 2], int(bh_ / 2), fill=col + (255,))
-        d.text((pw / 2, by), ('✓ ' if pr else '') + btn, font=font('uib', pw * 0.07), fill=(255, 255, 255, 255), anchor='mm')
+        d.text((pw / 2, by), ('✓ ' if pr else '') + btn, font=font('uib', pw * 0.07), fill=((17, 17, 17) if pr else (255, 255, 255)) + (255,), anchor='mm')
         return shadowed(im, int(26 * u), int(18 * u), 140)
     ph_im = cached(e, ('p', pressed and pk > 0.5), lambda: phone(pressed and pk > 0.5))
     tx = c.fx + side * c.fw * 2.0; tx = clamp(tx, pw * 0.55, c.W - pw * 0.55); ty = clamp(c.fy + c.fw * 1.2, ph * 0.5, c.H - ph * 0.45)
@@ -3500,7 +3500,7 @@ class Ctx: pass
 ZH_DEFAULTS = {
     'led-sign': {'text': 'AI 創作'},
     'red-collage': {'text': 'AI', 'lines': '一支影片|37 個特效|不用剪輯軟體'},
-    'checklist': {'title': 'Claude 正在剪你的影片', 'text': '找到你的臉::每一格|把你從背景去背::AI 遮罩|把字放到你身後::景深|加上音效::自動'},
+    'checklist': {'title': 'Claude 正在剪你的影片', 'text': '找到你的臉::每一格|幫你去背::AI 遮罩|把字放到你身後::景深|加上音效::自動'},
     'apple-toggles': {'text': '一支影片|輸入 /effects|不用剪輯軟體'},
     'timeline': {'text': '自動剪輯', 'sub': 'Claude 幫你剪'},
     'glass-widgets': {'sub': '個特效|一支影片', 'text': '37'},
